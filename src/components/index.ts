@@ -5,3 +5,4 @@ export { default as SearchBar } from './SearchBar';
 export { default as CategoryFilter } from './CategoryFilter';
 export { default as EmptyState } from './EmptyState';
 export { default as InternshipCard } from './InternshipCard';
+export { ApplyModal } from './ApplyModal';

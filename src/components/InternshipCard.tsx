@@ -17,6 +17,7 @@ interface Props {
     onSave?: () => void;
     isSaved?: boolean;
     compact?: boolean;
+    onApply?: () => void;
 }
 
 export default function InternshipCard({
@@ -25,6 +26,7 @@ export default function InternshipCard({
     onSave,
     isSaved = false,
     compact = false,
+    onApply,
 }: Props) {
     return (
         <TouchableOpacity
@@ -32,6 +34,14 @@ export default function InternshipCard({
             activeOpacity={0.85}
             style={[styles.card, Shadows.card]}
         >
+            {/* In-app badge */}
+            {internship.source === 'inapp' && (
+                <View style={styles.inAppBadge}>
+                    <Ionicons name="star" size={10} color={Colors.accent} />
+                    <Text style={styles.inAppBadgeText}>In-App Posting</Text>
+                </View>
+            )}
+
             {/* Header */}
             <View style={styles.header}>
                 {internship.companyLogo ? (
@@ -86,7 +96,7 @@ export default function InternshipCard({
                     <View style={styles.categoryTag}>
                         <Text style={styles.categoryText}>{internship.category}</Text>
                     </View>
-                    {internship.salary !== 'Not specified' && (
+                    {internship.salary !== 'Not specified' && internship.salary !== 'Negotiable' && (
                         <View style={styles.salaryTag}>
                             <Ionicons name="cash-outline" size={12} color={Colors.success} />
                             <Text style={styles.salaryText}>
@@ -95,6 +105,14 @@ export default function InternshipCard({
                         </View>
                     )}
                 </View>
+            )}
+
+            {/* Apply Button */}
+            {onApply && (
+                <TouchableOpacity style={styles.applyBtn} onPress={onApply}>
+                    <Ionicons name="paper-plane-outline" size={14} color={Colors.white} />
+                    <Text style={styles.applyBtnText}>Quick Apply</Text>
+                </TouchableOpacity>
             )}
         </TouchableOpacity>
     );
@@ -108,6 +126,22 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
         borderWidth: 1,
         borderColor: Colors.border,
+    },
+    inAppBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(0,206,201,0.1)',
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 3,
+        alignSelf: 'flex-start',
+        marginBottom: Spacing.sm,
+    },
+    inAppBadgeText: {
+        fontSize: FontSize.xs,
+        color: Colors.accent,
+        fontWeight: '600',
     },
     header: {
         flexDirection: 'row',
@@ -133,10 +167,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: Colors.primary,
     },
-    headerText: {
-        flex: 1,
-        gap: 4,
-    },
+    headerText: { flex: 1, gap: 4 },
     title: {
         fontSize: FontSize.md,
         fontWeight: '700',
@@ -148,9 +179,7 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         fontWeight: '500',
     },
-    saveBtn: {
-        padding: Spacing.xs,
-    },
+    saveBtn: { padding: Spacing.xs },
     metaRow: {
         flexDirection: 'row',
         gap: Spacing.lg,
@@ -161,10 +190,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.xs,
     },
-    metaText: {
-        fontSize: FontSize.xs,
-        color: Colors.textMuted,
-    },
+    metaText: { fontSize: FontSize.xs, color: Colors.textMuted },
     tagsRow: {
         flexDirection: 'row',
         gap: Spacing.sm,
@@ -177,11 +203,7 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.xs,
         borderRadius: BorderRadius.full,
     },
-    categoryText: {
-        fontSize: FontSize.xs,
-        color: Colors.primary,
-        fontWeight: '600',
-    },
+    categoryText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
     salaryTag: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -191,9 +213,16 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.xs,
         borderRadius: BorderRadius.full,
     },
-    salaryText: {
-        fontSize: FontSize.xs,
-        color: Colors.success,
-        fontWeight: '600',
+    salaryText: { fontSize: FontSize.xs, color: Colors.success, fontWeight: '600' },
+    applyBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+        backgroundColor: Colors.primary,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.sm,
+        marginTop: Spacing.md,
     },
+    applyBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.white },
 });

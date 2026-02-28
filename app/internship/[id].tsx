@@ -1,17 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View,
     Text,
     ScrollView,
     StyleSheet,
-    Linking,
     Image,
-    Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomButton, StatusBadge } from '../../src/components';
+import { ApplyModal } from '../../src/components/ApplyModal';
 import { useSavedInternships, useApplications } from '../../src/hooks';
 import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '../../src/constants/theme';
 import { stripHtml, timeAgo } from '../../src/utils';
@@ -21,7 +20,8 @@ export default function InternshipDetailScreen() {
     const params = useLocalSearchParams<{ id: string; data: string }>();
     const router = useRouter();
     const { isSaved, toggleSave } = useSavedInternships();
-    const { hasApplied, apply, applications } = useApplications();
+    const { hasApplied, applications } = useApplications();
+    const [showApply, setShowApply] = useState(false);
 
     const internship: Internship | null = useMemo(() => {
         try {
@@ -46,27 +46,6 @@ export default function InternshipDetailScreen() {
     const applied = hasApplied(internship.id);
     const application = applications.find((a) => a.internshipId === internship.id);
     const description = stripHtml(internship.description);
-
-    const handleApply = () => {
-        if (applied) {
-            Alert.alert('Already Applied', 'You have already applied to this internship.');
-            return;
-        }
-        Alert.alert(
-            'Apply',
-            `Apply to ${internship.title} at ${internship.company}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Apply & Open Link',
-                    onPress: async () => {
-                        await apply(internship);
-                        Linking.openURL(internship.url);
-                    },
-                },
-            ],
-        );
-    };
 
     return (
         <SafeAreaView style={styles.safe} edges={['top']}>
@@ -164,7 +143,7 @@ export default function InternshipDetailScreen() {
             <View style={styles.actionBar}>
                 <CustomButton
                     title={applied ? 'Applied ✓' : 'Apply Now'}
-                    onPress={handleApply}
+                    onPress={() => !applied && setShowApply(true)}
                     fullWidth
                     disabled={applied}
                     variant={applied ? 'secondary' : 'primary'}
@@ -175,6 +154,10 @@ export default function InternshipDetailScreen() {
                     }
                 />
             </View>
+
+            {showApply && (
+                <ApplyModal internship={internship} onClose={() => setShowApply(false)} />
+            )}
         </SafeAreaView>
     );
 }

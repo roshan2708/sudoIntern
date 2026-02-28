@@ -17,9 +17,12 @@ import { useAuthStore } from '../../src/store';
 import { CustomButton } from '../../src/components';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { isValidEmail } from '../../src/utils';
+import type { UserRole } from '../../src/types';
 
 export default function RegisterScreen() {
+    const [role, setRole] = useState<UserRole>('intern');
     const [name, setName] = useState('');
+    const [companyName, setCompanyName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,6 +32,10 @@ export default function RegisterScreen() {
     const handleRegister = async () => {
         if (!name.trim() || !email.trim() || !password.trim()) {
             Alert.alert('Error', 'Please fill in all fields.');
+            return;
+        }
+        if (role === 'employer' && !companyName.trim()) {
+            Alert.alert('Error', 'Please enter your company name.');
             return;
         }
         if (!isValidEmail(email)) {
@@ -44,7 +51,7 @@ export default function RegisterScreen() {
             return;
         }
         try {
-            await register(email.trim(), password, name.trim());
+            await register(email.trim(), password, name.trim(), role, role === 'employer' ? companyName.trim() : undefined);
         } catch {
             // Error is handled by the store
         }
@@ -66,9 +73,40 @@ export default function RegisterScreen() {
                             <Ionicons name="briefcase" size={36} color={Colors.primary} />
                         </View>
                         <Text style={styles.appName}>Create Account</Text>
-                        <Text style={styles.tagline}>
-                            Join sudoIntern and start your journey.
-                        </Text>
+                        <Text style={styles.tagline}>Join sudoIntern and start your journey.</Text>
+                    </View>
+
+                    {/* Role Selector */}
+                    <View style={styles.roleContainer}>
+                        <Text style={styles.roleLabel}>I am a...</Text>
+                        <View style={styles.roleToggle}>
+                            <TouchableOpacity
+                                style={[styles.roleBtn, role === 'intern' && styles.roleBtnActive]}
+                                onPress={() => setRole('intern')}
+                            >
+                                <Ionicons
+                                    name="school-outline"
+                                    size={16}
+                                    color={role === 'intern' ? Colors.white : Colors.textSecondary}
+                                />
+                                <Text style={[styles.roleBtnText, role === 'intern' && styles.roleBtnTextActive]}>
+                                    Intern Seeker
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.roleBtn, role === 'employer' && styles.roleBtnActive]}
+                                onPress={() => setRole('employer')}
+                            >
+                                <Ionicons
+                                    name="business-outline"
+                                    size={16}
+                                    color={role === 'employer' ? Colors.white : Colors.textSecondary}
+                                />
+                                <Text style={[styles.roleBtnText, role === 'employer' && styles.roleBtnTextActive]}>
+                                    Employer
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Form */}
@@ -97,6 +135,23 @@ export default function RegisterScreen() {
                                 />
                             </View>
                         </View>
+
+                        {role === 'employer' && (
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Company Name</Text>
+                                <View style={styles.inputContainer}>
+                                    <Ionicons name="business-outline" size={18} color={Colors.textMuted} />
+                                    <TextInput
+                                        value={companyName}
+                                        onChangeText={setCompanyName}
+                                        placeholder="Acme Corp"
+                                        placeholderTextColor={Colors.textMuted}
+                                        style={styles.input}
+                                        autoCapitalize="words"
+                                    />
+                                </View>
+                            </View>
+                        )}
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Email</Text>
@@ -153,7 +208,7 @@ export default function RegisterScreen() {
                         </View>
 
                         <CustomButton
-                            title="Create Account"
+                            title={role === 'employer' ? 'Create Employer Account' : 'Create Account'}
                             onPress={handleRegister}
                             loading={loading}
                             fullWidth
@@ -176,23 +231,15 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-    safe: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    flex: {
-        flex: 1,
-    },
+    safe: { flex: 1, backgroundColor: Colors.background },
+    flex: { flex: 1 },
     scroll: {
         flexGrow: 1,
         justifyContent: 'center',
         paddingHorizontal: Spacing.xxl,
         paddingVertical: Spacing.xxl,
     },
-    header: {
-        alignItems: 'center',
-        marginBottom: Spacing.xxxl,
-    },
+    header: { alignItems: 'center', marginBottom: Spacing.xxl },
     logoContainer: {
         width: 72,
         height: 72,
@@ -202,20 +249,32 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: Spacing.lg,
     },
-    appName: {
-        fontSize: FontSize.xxl,
-        fontWeight: '800',
-        color: Colors.text,
+    appName: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.text },
+    tagline: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
+    roleContainer: { marginBottom: Spacing.xl },
+    roleLabel: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textSecondary, marginBottom: Spacing.sm },
+    roleToggle: {
+        flexDirection: 'row',
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        padding: 4,
+        gap: 4,
     },
-    tagline: {
-        fontSize: FontSize.md,
-        color: Colors.textSecondary,
-        marginTop: Spacing.xs,
-        textAlign: 'center',
+    roleBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.md,
+        gap: Spacing.xs,
     },
-    form: {
-        gap: Spacing.lg,
-    },
+    roleBtnActive: { backgroundColor: Colors.primary },
+    roleBtnText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textSecondary },
+    roleBtnTextActive: { color: Colors.white },
+    form: { gap: Spacing.lg },
     errorBox: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -224,19 +283,9 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.md,
         gap: Spacing.sm,
     },
-    errorText: {
-        flex: 1,
-        fontSize: FontSize.sm,
-        color: Colors.error,
-    },
-    inputGroup: {
-        gap: Spacing.sm,
-    },
-    label: {
-        fontSize: FontSize.sm,
-        fontWeight: '600',
-        color: Colors.textSecondary,
-    },
+    errorText: { flex: 1, fontSize: FontSize.sm, color: Colors.error },
+    inputGroup: { gap: Spacing.sm },
+    label: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textSecondary },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -247,24 +296,8 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
         gap: Spacing.sm,
     },
-    input: {
-        flex: 1,
-        fontSize: FontSize.md,
-        color: Colors.text,
-        paddingVertical: Spacing.md,
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: Spacing.xxxl,
-    },
-    footerText: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-    },
-    footerLink: {
-        fontSize: FontSize.sm,
-        fontWeight: '700',
-        color: Colors.primary,
-    },
+    input: { flex: 1, fontSize: FontSize.md, color: Colors.text, paddingVertical: Spacing.md },
+    footer: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing.xxxl },
+    footerText: { fontSize: FontSize.sm, color: Colors.textSecondary },
+    footerLink: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.primary },
 });

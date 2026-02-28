@@ -18,6 +18,7 @@ function normalise(raw: RemotiveResponse['jobs'][number]): Internship {
         salary: raw.salary || 'Not specified',
         description: raw.description,
         url: raw.url,
+        source: 'api' as const,
     };
 }
 

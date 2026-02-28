@@ -14,7 +14,7 @@ import {
     serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import type { UserProfile } from '../types';
+import type { UserProfile, UserRole } from '../types';
 
 interface AuthState {
     user: UserProfile | null;
@@ -24,7 +24,7 @@ interface AuthState {
     error: string | null;
 
     // Actions
-    register: (email: string, password: string, name: string) => Promise<void>;
+    register: (email: string, password: string, name: string, role: UserRole, companyName?: string) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     updateProfile: (data: Partial<UserProfile>) => Promise<void>;
@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     initialising: true,
     error: null,
 
-    register: async (email, password, name) => {
+    register: async (email, password, name, role, companyName) => {
         set({ loading: true, error: null });
         try {
             const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -49,10 +49,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 uid: credential.user.uid,
                 name,
                 email,
+                role,
                 skills: [],
                 github: '',
                 linkedin: '',
+                bio: '',
                 createdAt: new Date().toISOString(),
+                ...(role === 'employer' && companyName ? { companyName } : {}),
             };
             await setDoc(doc(db, 'users', credential.user.uid), profile);
             set({ user: profile, firebaseUser: credential.user, loading: false });

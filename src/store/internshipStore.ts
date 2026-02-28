@@ -8,6 +8,7 @@ import {
     updateDoc,
     query,
     orderBy,
+    where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { fetchRemotiveJobs } from '../api';
@@ -16,6 +17,7 @@ import type {
     SavedInternship,
     Application,
     ApplicationStatus,
+    InternshipPost,
 } from '../types';
 
 const PAGE_SIZE = 20;
@@ -50,17 +52,47 @@ interface InternshipState {
     fetchSaved: (uid: string) => Promise<void>;
     saveInternship: (uid: string, internship: Internship) => Promise<void>;
     removeSavedInternship: (uid: string, internshipId: string) => Promise<void>;
-    isSaved: (internshipId: number) => boolean;
+    isSaved: (internshipId: number | string) => boolean;
 
     // ─── Application actions ───────────────────────────
     fetchApplications: (uid: string) => Promise<void>;
-    applyToInternship: (uid: string, internship: Internship) => Promise<void>;
+    applyToInternship: (
+        uid: string,
+        internship: Internship,
+        details: {
+            applicantName: string;
+            applicantEmail: string;
+            coverNote: string;
+            resumeUri?: string;
+            resumeName?: string;
+        },
+    ) => Promise<void>;
     updateApplicationStatus: (
         uid: string,
         applicationId: string,
         status: ApplicationStatus,
     ) => Promise<void>;
-    hasApplied: (internshipId: number) => boolean;
+    hasApplied: (internshipId: number | string) => boolean;
+}
+
+/** Convert an employer-posted InternshipPost → normalised Internship */
+function postToInternship(post: InternshipPost): Internship {
+    return {
+        id: post.id,
+        title: post.title,
+        company: post.company,
+        companyLogo: null,
+        category: post.category,
+        tags: [],
+        jobType: post.jobType,
+        publishedAt: post.postedAt,
+        location: post.location,
+        salary: post.salary,
+        description: post.description,
+        url: '',
+        source: 'inapp',
+        postedBy: post.postedBy,
+    };
 }
 
 export const useInternshipStore = create<InternshipState>((set, get) => ({
@@ -87,17 +119,35 @@ export const useInternshipStore = create<InternshipState>((set, get) => ({
         set(refresh ? { refreshing: true, error: null } : { loading: true, error: null });
 
         try {
-            const jobs = await fetchRemotiveJobs({
+            // Fetch from Remotive API
+            const apiJobs = await fetchRemotiveJobs({
                 search: searchQuery || undefined,
                 category: category || undefined,
             });
 
-            const paginated = jobs.slice(0, PAGE_SIZE);
+            // Fetch in-app postings from Firestore
+            let inAppJobs: Internship[] = [];
+            try {
+                const snap = await getDocs(
+                    query(collection(db, 'internships'), orderBy('postedAt', 'desc')),
+                );
+                inAppJobs = snap.docs.map((d) => {
+                    const post = { id: d.id, ...(d.data() as Omit<InternshipPost, 'id'>) };
+                    return postToInternship(post);
+                });
+            } catch {
+                // Non-fatal: fallback to API-only
+            }
+
+            // Merge: in-app first, then API
+            const merged = [...inAppJobs, ...apiJobs];
+
+            const paginated = merged.slice(0, PAGE_SIZE);
             set({
-                allFetched: jobs,
+                allFetched: merged,
                 internships: paginated,
                 page: 1,
-                hasMore: jobs.length > PAGE_SIZE,
+                hasMore: merged.length > PAGE_SIZE,
                 loading: false,
                 refreshing: false,
                 error: null,
@@ -148,7 +198,6 @@ export const useInternshipStore = create<InternshipState>((set, get) => ({
             savedAt: new Date().toISOString(),
         };
 
-        // Optimistic update
         set((s) => ({
             savedInternships: [{ id: docId, ...saved }, ...s.savedInternships],
         }));
@@ -156,7 +205,6 @@ export const useInternshipStore = create<InternshipState>((set, get) => ({
         try {
             await setDoc(doc(db, 'users', uid, 'saved', docId), saved);
         } catch {
-            // Rollback
             set((s) => ({
                 savedInternships: s.savedInternships.filter((si) => si.id !== docId),
             }));
@@ -166,7 +214,6 @@ export const useInternshipStore = create<InternshipState>((set, get) => ({
     removeSavedInternship: async (uid, internshipId) => {
         const prev = get().savedInternships;
 
-        // Optimistic
         set((s) => ({
             savedInternships: s.savedInternships.filter((si) => si.id !== internshipId),
         }));
@@ -201,33 +248,39 @@ export const useInternshipStore = create<InternshipState>((set, get) => ({
         }
     },
 
-    applyToInternship: async (uid, internship) => {
+    applyToInternship: async (uid, internship, details) => {
         const docId = String(internship.id);
         const application: Omit<Application, 'id'> = {
             internshipId: internship.id,
             internship,
             status: 'Applied',
             appliedAt: new Date().toISOString(),
+            applicantName: details.applicantName,
+            applicantEmail: details.applicantEmail,
+            coverNote: details.coverNote,
+            resumeUri: details.resumeUri,
+            resumeName: details.resumeName,
         };
 
-        // Optimistic
+        // Optimistic update
         set((s) => ({
             applications: [{ id: docId, ...application }, ...s.applications],
         }));
 
         try {
             await setDoc(doc(db, 'users', uid, 'applications', docId), application);
-        } catch {
+        } catch (err) {
+            // Roll back optimistic update and surface the error to the caller
             set((s) => ({
                 applications: s.applications.filter((a) => a.id !== docId),
             }));
+            throw err;
         }
     },
 
     updateApplicationStatus: async (uid, applicationId, status) => {
         const prev = get().applications;
 
-        // Optimistic
         set((s) => ({
             applications: s.applications.map((a) =>
                 a.id === applicationId ? { ...a, status } : a,

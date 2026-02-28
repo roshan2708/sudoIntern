@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useInternshipStore, useAuthStore } from '../store';
-import type { Internship, ApplicationStatus } from '../types';
+import type { ApplicationStatus } from '../types';
 
 /**
  * Hook for application tracker – auto-fetches on mount if user is logged in.
@@ -11,7 +11,6 @@ export function useApplications() {
         applications,
         applicationsLoading,
         fetchApplications,
-        applyToInternship,
         updateApplicationStatus,
         hasApplied,
     } = useInternshipStore();
@@ -19,14 +18,6 @@ export function useApplications() {
     useEffect(() => {
         if (uid) fetchApplications(uid);
     }, [uid]);
-
-    const apply = useCallback(
-        async (internship: Internship) => {
-            if (!uid) return;
-            await applyToInternship(uid, internship);
-        },
-        [uid, applyToInternship],
-    );
 
     const updateStatus = useCallback(
         async (applicationId: string, status: ApplicationStatus) => {
@@ -48,7 +39,6 @@ export function useApplications() {
     return {
         applications,
         applicationsLoading,
-        apply,
         updateStatus,
         hasApplied,
         stats,
